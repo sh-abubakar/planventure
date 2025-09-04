@@ -1,10 +1,10 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from email_validator import validate_email, EmailNotValidError
 from models.user import User
 from database import db
 from utils.auth import generate_tokens, get_current_user_id
 from utils.password import hash_password, verify_password
+import re
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -23,10 +23,10 @@ def register():
         if not email or not password:
             return jsonify({'message': 'Email and password are required'}), 400
         
-        # Validate email format
-        try:
-            validate_email(email)
-        except EmailNotValidError:
+        # Basic email format validation (more lenient)
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
             return jsonify({'message': 'Invalid email format'}), 400
         
         # Check if user already exists
@@ -137,3 +137,23 @@ def get_current_user():
 def logout():
     """Logout user (client should discard tokens)."""
     return jsonify({'message': 'Logout successful'}), 200
+
+@auth_bp.route('/check-email', methods=['POST'])
+def check_email():
+    """Check if email already exists (for frontend validation)."""
+    try:
+        data = request.get_json()
+        
+        if not data or 'email' not in data:
+            return jsonify({'message': 'Email is required'}), 400
+        
+        email = data.get('email')
+        user_exists = User.query.filter_by(email=email).first() is not None
+        
+        return jsonify({
+            'email': email,
+            'exists': user_exists
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Email check failed', 'error': str(e)}), 500
