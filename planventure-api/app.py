@@ -20,6 +20,7 @@ CORS(app)
 
 # Import models
 from models.user import User
+from models.trip import Trip
 
 @app.route('/')
 def home():
@@ -28,11 +29,12 @@ def home():
 @app.route('/health')
 def health_check():
     try:
-        db.session.execute('SELECT 1')
-        return jsonify({
-            "status": "healthy",
-            "database": "connected"
-        })
+        with app.app_context():
+            db.session.execute(db.text('SELECT 1'))
+            return jsonify({
+                "status": "healthy",
+                "database": "connected"
+            })
     except Exception as e:
         return jsonify({
             "status": "unhealthy",
@@ -41,6 +43,4 @@ def health_check():
         }), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
-        db.create_all()
     app.run(debug=True)
